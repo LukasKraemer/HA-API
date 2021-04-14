@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Installer</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        $( document ).ready(function() {
+            $("#installer").submit(function(e) {
+                e.preventDefault(); // avoid to execute the actual submit of the form.
+
+                let form = $(this);
+                let url = form.attr('action');
+                $('#output').html("Installation in progress <br> Please wait");
+                $.ajax({
+                    type: "POST",
+                    url: url,
+                    data: form.serialize(), // serializes the form's elements.
+                    success: function(data)
+                    {
+                        if (data == "no Error"){
+                            $('#output').text("finished!!!");
+                        }else{
+                            $('#output').text(data);
+                        }
+
+                    }
+                });
+            });
+        });
+
+
+    </script>
+</head>
+<body>
+<h1>Install HA- Tool</h1>
+<p>Please fill out all the data below to make everything work</p>
+
+<form id="installer" action="./install.php">
+    <h2>Database Configs</h2>
+    <label for="DBip">IP: </label> <input type="text" name="dbip" id="DBip" value="localhost"> <br>
+    <label for="DBuser">username: </label> <input type="text" name="dbuser" id="DBuser"> <br>
+    <label for="DBpwd">Password: </label> <input type="password" name="dbpwd" id="DBpwd"> <br>
+    <label for="DBname">Schema</label> <input type="text" name="dbname" id="DBname" > <br>
+    <label for="hashalgo">Hash: </label>
+<select name="hashalgo" id="hashalgo">
+    <option value="sha256">sha256</option>
+    <option value="sha512">sha512</option>
+    <option value="sha3-224">sha3-224</option>
+    <option value="sha3-256">sha3-256</option>
+    <option value="sha3-384">sha3-384</option>
+    <option value="sha3-512">sha3-512</option>
+</select> <br>
+    <h2>Admin Nutzer</h2>
+    <label for="apiuser">Username: </label> <input type="text" name="apiuser" id="apiuser"> <br>
+    <label for="apipwd">Password: </label> <input type="password" name="apipwd" id="apipwd"> <br>
+
+    <label for="jwtsecret">JWT_SECRET:</label><input type="password" placeholder="auto gen if empty" name="jwtsecret" id="jwtsecret">
+
+    <h2>Python Settings</h2>
+    <label for="pathtripdata">Path to txt Data</label> <input type="text" name="pathtripdata" id="pathtripdata" value="/var/ha-tools/">
+    <br>
+    <label for="pathpython">Path to Python Script</label> <input type="text" name="pathtpython" id="pathpython" value="/var/ha-tools/">
+    <br>
+    <label for="filenamepy">Filename Python</label> <input type="text" name="filenamepy" id="filenamepy" value="ha-tool.py">
+    <br>
+    <label for="process">process at the same time max:</label> <input type="number" name="process" id="process" value="4" step="1">
+    <br>
+
+    <label for="debug">Debug:</label> <input type="checkbox" name="debug" id="debug" value="1">
+    <label for="logs">create Logs:</label> <input type="checkbox" name="logs" id="logs" value="1"> <br>
+    <input type="submit" value="Absenden">
+</form>
+<div id="output"></div>
+<h2>Check Webserver Config! htaccess example Config have to move to Document. You can find the .htaccess file unter /api/install/.htacess
+    <br> For Nginx add the example Config to /etc/nginx/sites-enabled/ and change your servername <br>
+Please Generate SSL Certificates!!!</h2>
+
+</body>
+</html>

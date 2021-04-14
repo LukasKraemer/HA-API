@@ -1,0 +1,50 @@
+server {
+    server_name DOMAINE;
+    root DIRECTORY; # PATH TO Webroot
+    index index.html index.php;
+
+    listen 80;
+    listen [::]:80;
+
+    location ~ \.php$ {
+            include snippets/fastcgi-php.conf;
+            #include nginxconfig.io/php_fastcgi.conf;
+            # With php-fpm (or other unix sockets):
+            #fastcgi_pass unix:/run/php/php7.4-fpm.sock;
+            # With php-cgi (or other tcp sockets):
+            #fastcgi_pass 127.0.0.1:9000;
+            fastcgi_read_timeout 300;
+    }
+
+    location / {
+         try_files $uri$args $uri$args/ /index.html;
+    }
+
+    location ~ \.env {
+     deny all;
+    }
+
+    location = /favicon.ico {
+            allow all;
+            log_not_found off;
+            access_log off;
+    }
+
+
+    location /api {
+        alias PATH; # PATH to api root
+        try_files $uri $uri/ @api;
+
+        location ~ \.php$ {
+            include snippets/fastcgi-php.conf;
+            fastcgi_param SCRIPT_FILENAME $request_filename;
+            fastcgi_pass unix:/var/run/php/php7.4-fpm.sock;
+            fastcgi_read_timeout 500;
+        }
+    }
+
+    location @api {
+    rewrite /api/(.*)$ /api/index.php?_url=/$1 last;
+    }
+
+}
