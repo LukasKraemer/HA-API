@@ -1,6 +1,7 @@
 <?php
 namespace Src\Gateway;
 
+use PDO;
 use Src\System\DatabaseConnector;
 
 class TripsManager
@@ -56,7 +57,7 @@ class TripsManager
 
     function getMissing(): ?array
     {
-        $summary = $_ENV['overview_table'];
+        $summary = $_ENV['table_overview'];
         $this->sql= "SELECT DISTINCT trip_number +1 
                                     FROM $summary
                                     WHERE trip_number +1 NOT IN (SELECT DISTINCT trip_number FROM $summary);";
@@ -84,12 +85,14 @@ class TripsManager
     }
 
     function getDateFromID($tripID){
-        $raw = $_ENV['raw_data_table'];
+        $raw = $_ENV['table_raw'];
 
         $this->sql= "SELECT Date, Time from $raw where trip_counter = :tripID order by counter asc limit 1";
         $this->data=array('tripID' => $tripID);
         return $this->query();
     }
+
+
 
     function getNumberOfLast(){
         $this->sql= "SELECT trip_number FROM $this->table  order by trip_number desc limit 1;";
@@ -115,13 +118,18 @@ class TripsManager
     public function getColumns(){
 
     }
-    private function query(){
+    private function query($assocs= false){
         $stmt= $this->database->prepare($this->sql);
         if($stmt->execute($this->data)){
+                if ($assocs){
+                    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+                }
             return $stmt->fetchAll();
         }else{
             return null;
         }
     }
+
+
 }
 ?>

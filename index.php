@@ -48,7 +48,6 @@ if(isset($_GET['_url'])){
         exit();
     }
 
-    
     if( strtolower($uri[1])== "app"){
         //APP API Functions
         if( strtolower($uri[2])== "filename" && $methode == "GET" && $permission >=2)
@@ -78,7 +77,22 @@ if(isset($_GET['_url'])){
         echo "admin";
 
     }elseif(strtolower($uri[1])== "summary"){
-        echo "summary";
+
+        if(strtolower($uri[2]) == "day"){
+            $summary = new \Src\Gateway\SummaryGateway("day");
+            if(strtolower($uri[3]) == "data"){
+                $output->addData($summary->getSummary() , "summary");
+            }else{
+                $output->addData($summary->getColumns() , "columns");
+            }
+        }elseif (strtolower($uri[2] = "trip")){
+            $summary = new \Src\Gateway\SummaryGateway("trip");
+            if(strtolower($uri[3]) == "data"){
+                $output->addData($summary->getSummary() , "summary");
+            }else{
+                $output->addData($summary->getColumns() , "columns");
+            }
+        }
     }
     $output->print();
 }else{

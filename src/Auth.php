@@ -6,9 +6,6 @@ use DateTimeImmutable;
 use PDO;
 use Src\System\DatabaseConnector;
 
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
 class Auth{
 
     private $token;
@@ -43,7 +40,7 @@ class Auth{
             $this->logincredit['pwd']= $_SERVER['PHP_AUTH_PW'];
 
         }else{
-            exit("Login Errror");
+            exit("Login Error");
         }
         $this->secret=$_ENV['JWT_SECRET'];
 

@@ -43,6 +43,21 @@ class Output
         }
 
     }
+
+    public static function genCSV($data, $requestname = "export.csv") {
+        header("Content-type: text/csv");
+        header("Content-disposition: attachment; filename = $requestname");
+
+        $output = fopen('php://output', 'w');
+
+        fputcsv($output, array_keys($data[0]));
+
+        foreach ($data as $row){
+            fputcsv($output, $row);
+        }
+        exit();
+
+    }
 }
 
 ?>

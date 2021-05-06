@@ -2,31 +2,19 @@
 namespace Src\Gateway;
 
 use Exception;
+use Src\Formatter\Output;
 
 class FileManager
 {
 
     static function sendTxt(string $requestname): void{
-        $path= $_ENV['PathToTripData']. "archive/". $requestname;
-        // output headers so that the file is downloaded rather than displayed
-        header("Content-type: text/csv");
-        header("Content-disposition: attachment; filename = $requestname");
-        //readfile($path);
-        $csvFile = file($path);
+        $csvFile = file($_ENV['PathToTripData']. "archive/". $requestname);
         $data = [];
         foreach ($csvFile as $line) {
             $data[] =  str_getcsv($line, "\t");
         }
-
-        $output = fopen('php://output', 'w');
-        foreach ($data as $row){
-            fputcsv($output, $row);
+        Output::genCSV($data);
         }
-        exit();
-        }
-
-
-
 
     static function countTripFiles(): int
     {
