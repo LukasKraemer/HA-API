@@ -3,7 +3,7 @@
 *
 * API For Ha-Tool
 *
-* @version 2.0
+* @version 2.1
 * @author Lukas Krämer <kontakt@lukas-kraemer.de>
 */
 require __DIR__."/bootstrap.php";

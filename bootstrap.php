@@ -7,11 +7,11 @@ use Dotenv\Dotenv;
 $dotenv = Dotenv::createImmutable(__DIR__);
 $dotenv->load();
 
-//if($_ENV['debug']== "true"){
+if($_ENV['debug']== "true"){
     ini_set('display_errors', 1);
     ini_set('display_startup_errors', 1);
     error_reporting(E_ALL);
-//}
+}
 
 putenv("LD_LIBRARY_PATH=test");
 new DatabaseConnector();
