@@ -20,24 +20,26 @@ class FileManager
     {
         $PathToTripData= $_ENV['PathToTripData'];
         $path =$PathToTripData. "archive";
-        $re = '/Trip_[A-Za-z0-9_]*.txt/m';
+        $re = '/Trip_20[1-3][0-9]-[0-2][0-9]-[0-3][0-9]_[0-3][0-9]-[0-9][0-9]-[0-9][0-9].txt/m';
         $archive=0;
         $readyToCalc=0;
 
         //scan archive
         $files = scandir($path);
+
         foreach ($files as $data){
-            if(!preg_match_all($re, $data, $matches, PREG_SET_ORDER)!=False){
+            if(preg_match_all($re, $data, $matches, PREG_SET_ORDER)!=False){
                 $archive++;
             }
         }
         //scan Upload
         $files = scandir($PathToTripData);
         foreach ($files as $data){
-            if(!preg_match_all($re, $data, $matches, PREG_SET_ORDER)!=False){
+            if(preg_match_all($re, $data, $matches, PREG_SET_ORDER)!=False){
                 $readyToCalc++;
             }
         }
+
         return $archive + $readyToCalc;
     }
 
@@ -46,9 +48,9 @@ class FileManager
         $filesArchive = array_slice(scandir($_ENV['PathToTripData']."archive"), 2); //return all Files in archive
         $filesRoot = array_slice(scandir($_ENV['PathToTripData']), 3);
         if(count($filesArchive) != 0){
-            return array_merge($filesArchive, $filesRoot);
+            return array_merge($filesRoot, $filesArchive,);
         }else{
-            return $filesArchive;
+            return $filesRoot;
         }
     }
 

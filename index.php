@@ -26,7 +26,6 @@ if(isset($_GET['_url'])){
         http_response_code(400);
         exit();
     }
-
     if( strtolower($uri[1])== "gentoken") {
         $data = new Auth();
         $output->addData( $data->genToken(), "accessToken");
@@ -85,8 +84,16 @@ if(isset($_GET['_url'])){
             }else{
                 $output->addData($summary->getColumns() , "columns");
             }
-        }elseif (strtolower($uri[2] = "trip")){
-            $summary = new \Src\Gateway\SummaryGateway("trip");
+        }elseif (strtolower($uri[2] == "month")){
+            $summary = new \Src\Gateway\SummaryGateway("month");
+            if(strtolower($uri[3]) == "data"){
+                $output->addData($summary->getSummary() , "summary");
+            }else{
+                $output->addData($summary->getColumns() , "columns");
+            }
+        }
+        elseif (strtolower($uri[2] == "trips")){
+            $summary = new \Src\Gateway\SummaryGateway("trips");
             if(strtolower($uri[3]) == "data"){
                 $output->addData($summary->getSummary() , "summary");
             }else{

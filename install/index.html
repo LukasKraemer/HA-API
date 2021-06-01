@@ -8,6 +8,7 @@
         $( document ).ready(function() {
             $("#installer").submit(function(e) {
                 e.preventDefault(); // avoid to execute the actual submit of the form.
+
                 let form = $(this);
                 let url = form.attr('action');
                 $('#output').html("Installation in progress <br> Please wait");
@@ -65,6 +66,7 @@
     <br>
 
     <label for="debug">Debug:</label> <input type="checkbox" name="debug" id="debug" value="1">
+    <label for="logs">create Logs:</label> <input type="checkbox" name="logs" id="logs" value="1"> <br>
     <input type="submit" value="Absenden">
 </form>
 <div id="output"></div>

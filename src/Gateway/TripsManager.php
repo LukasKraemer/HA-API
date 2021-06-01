@@ -58,9 +58,8 @@ class TripsManager
     function getMissing(): ?array
     {
         $summary = $_ENV['table_overview'];
-        $this->sql= "SELECT DISTINCT trip_number +1 
-                                    FROM $summary
-                                    WHERE trip_number +1 NOT IN (SELECT DISTINCT trip_number FROM $summary);";
+        $rawData = $_ENV['table_raw'];
+        $this->sql= "SELECT trip_counter FROM $rawData WHERE $rawData.trip_counter NOT IN (SELECT $summary.trip_number FROM $summary) group by trip_counter;";
         $this->data=array();
         return $this->query();
     }
@@ -73,14 +72,13 @@ class TripsManager
         $missing = $this->getMissing();
         $list = array();
         foreach ($missing as $miss){
-            $dates = $this->getDateFromID($miss["trip_number +1"]);
+            $dates = $this->getDateFromID($miss["trip_counter"]);
             if( isset( $dates[0])) {
                 $list[] = $dates[0]["Date"] . " " . $dates[0]["Time"];
             }else{
                 $list[] = "no Date Found for Trip ". $miss['trip_number +1'];
             }
         }
-        array_pop($list);
         return $list;
     }
 
