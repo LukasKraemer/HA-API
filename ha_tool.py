@@ -195,6 +195,7 @@ class HaTool:
                 if timeout >= 12:
                     sys_exit()
                 timeout += 1
+
             query = f"""
             SELECT * FROM {self._raw_data_table}
             WHERE trip_counter = {self._todo_trips[process_id]} ORDER BY time asc; """
@@ -285,9 +286,8 @@ class HaTool:
 
             self._lock.acquire()
             overview_frame.to_sql(self._overview_table,
+                                  index= False,
                                   con=self._engine,
-                                  index=True,
-                                  index_label='id',
                                   if_exists='append')
             self._lock.release()
             del overview_frame
