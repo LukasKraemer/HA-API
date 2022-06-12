@@ -9,15 +9,14 @@ import re
 from shutil import move as move
 from sys import exit as sys_exit
 import threading
-from time import sleep as sleep
 from datetime import datetime
 import pandas as pd
 import sqlalchemy
+import pymysql
 from dotenv import load_dotenv, dotenv_values
 
 
 class HaTool:
-    _fred = threading.Thread()  # thread management
     _lock = threading.Lock()  # thread lock
     _engine = None  # Database connection
 
@@ -34,11 +33,12 @@ class HaTool:
         self._config = dotenv_values(".env")
         if not (os.path.isdir(self._path)):
             os.makedirs(self._path)
-        self._login_value()
+        if not self.login_value():
+            sys_exit()
         self._todo_trips = []
         self._task_list = None
 
-    def _login_value(self):
+    def login_value(self):
         """Connection to the Database and log """
         db_user = self._config["DB_USERNAME"]
         db_passwd = self._config["DB_PASSWORD"]
@@ -53,9 +53,10 @@ class HaTool:
             data = {'username': [db_user], "time": [now.strftime("%d/%m/%Y, %H:%M:%S")], "Remote": [db_ip],
                     "OS": ["RPI"]}
             pd.DataFrame(data).to_sql("python_log", con=self._engine, if_exists='append')
+            return True
         except Exception:
             print("----------------\n\n Error while logging in Database\n\n----------------")
-            sys_exit()
+            return False
 
     def _get_last_trip(self, table, trip_id="trip_counter"):
         """return last trip on the Database"""
@@ -80,7 +81,7 @@ class HaTool:
             print("Error")
             return 0
 
-    def _getMissiongSummaryTrips(self):
+    def _getMissingSummaryTrips(self):
         ids = []
         try:
             values = pd.read_sql_query(f'''SELECT trip_counter
@@ -98,7 +99,7 @@ class HaTool:
 
         except Exception:
             print("Summary not founded")
-            values = pd.read_sql_query(f'''SELECT trip_counter FROM rawData order by trip_counter
+            values = pd.read_sql_query(f'''SELECT trip_counter FROM {self._raw_data_table} order by trip_counter
                                         desc limit 1''', con=self._engine)
             for i in range(values['trip_counter'][0], 0, -1):
                 ids.append(i)
@@ -117,27 +118,28 @@ class HaTool:
 
         while len(threads) != 0:
             for idx, val in enumerate(threads):
-                if not val.isAlive():
+                if not val.is_alive():
                     threads.remove(val)
                     try:
                         next_Trip = tasks.pop()
                         new_thread = threading.Thread(target=self._calc_summary, args=(next_Trip,))
                         new_thread.start()
                         threads.append(new_thread)
-                    except IndexError as e:
+                    except IndexError:
                         pass
         print("finish")
         sys_exit()
 
     def _duplicate_check(self, filename):
         """check if file exist in Database"""
-        trip_list = pd.read_sql_query(f'SELECT count(filename) as founded FROM {self._log_table} where filename = "{filename}";', con=self._engine)
+        trip_list = pd.read_sql_query(
+            f'SELECT count(filename) as founded FROM {self._log_table} where filename = "{filename}";',
+            con=self._engine)
         return trip_list['founded'].iloc[0]
 
-    def _upload_trips_raw(self):
+    def _upload_trips_raw(self, filelist):
         """upload all txt files to DB"""
         path = self._path
-        print("new FIles")
         try:  # normal
             self._get_last_trip_number()
             counter = pd.read_sql_query(
@@ -147,28 +149,27 @@ class HaTool:
         except Exception:
             finished = 0
 
-        regex = re.compile("Trip_20[1-3][0-9]-[0-2][0-9]-[0-3][0-9]_[0-3][0-9]-[0-9][0-9]-[0-9][0-9].txt")
-        for file in os.listdir(path):
-            if regex.match(file):
-                values_of_file = pd.read_csv(path + file, sep='\t')
+        for file in filelist:
+            values_of_file = pd.read_csv(path + file, sep='\t')
 
-                if not self._duplicate_check(file):
-                    finished = finished + 1
-                else:
-                    continue
+            if not self._duplicate_check(file):
+                finished = finished + 1
+            else:
+                continue
 
-                values_of_file['trip_counter'] = pd.DataFrame(
-                    {'trip_counter': [finished for _ in range(len(values_of_file.index))]})
-                values_of_file.to_sql(self._raw_data_table, con=self._engine, if_exists='append', index='counter')
-                if not (os.path.isdir(path + "archive/")):
-                    os.makedirs(path + "archive/")
-                move(path + file, path + 'archive/')  # move finished file to archive
+            values_of_file['trip_counter'] = pd.DataFrame(
+                {'trip_counter': [finished for _ in range(len(values_of_file.index))]})
+            values_of_file.to_sql(self._raw_data_table, con=self._engine, if_exists='append', index='counter')
+            if not (os.path.isdir(path + "archive/")):
+                os.makedirs(path + "archive/")
+            move(path + file, path + 'archive/')  # move finished file to archive
 
-                trip_log = {'filename': [str(file)],
-                            'Datum': [datetime.now().strftime("%d/%m/%Y, %H:%M:%S")]
-                            }
-                pd.DataFrame(trip_log).to_sql(self._log_table, con=self._engine, if_exists='append')
-                del values_of_file
+            trip_log = {'index': [finished],
+                        'filename': [str(file)],
+                        'Datum': [datetime.now().strftime("%d/%m/%Y, %H:%M:%S")]
+                        }
+            pd.DataFrame(trip_log).to_sql(self._log_table, con=self._engine, if_exists='append')
+            del values_of_file
         sys_exit()
 
     @staticmethod
@@ -179,123 +180,139 @@ class HaTool:
                                   how='outer')
         return comparison_df[comparison_df['_merge'] != 'both']
 
+    def get_overview_data_from_database(self, trip_id):
+        try:
+            query = f"""SELECT * FROM {self._overview_table}
+                    WHERE trip_number = {trip_id}; """
+            return pd.read_sql_query(query, self._engine)
+        except Exception:
+            return pd.DataFrame()
+
+    def get_raw_data_from_database(self, trip_id):
+        try:
+            query = f"""SELECT * FROM {self._raw_data_table}
+                    WHERE trip_counter = {trip_id} ORDER BY time; """
+            return pd.read_sql_query(query, self._engine)
+        except Exception:
+            return pd.DataFrame()
+
     def _calc_summary(self, trip_id):
         """gen _calc_summary trip by trip"""
+        raw_data = self.get_raw_data_from_database(trip_id)
+        overview_value = self.create_overview_value(raw_data)
+        self._lock.acquire()
+        overview_value.to_sql(self._overview_table,
+                              index=False,
+                              con=self._engine,
+                              if_exists='append')
+        self._lock.release()
+
+    @staticmethod
+    def create_overview_value(raw_data):
+        number_lines = raw_data.shape[0]
+        if number_lines == 0:
+            return
+        elif number_lines <= 20:
+            return
+        df4 = pd.DataFrame(columns=['soc'])
+        df4 = []
+        for x in range(0, number_lines):  # remove all 0 from the Dataset
+            if raw_data.at[x, 'soc'] != 0:
+                soc_val = float(raw_data.at[x, 'soc'])
+                df4.append(soc_val)
+        last_row = int(number_lines - 1)
+        if len(df4) != 0:
+            c_soc_start = float(df4[0])
+            c_soc_end = float(df4[len(df4) - 1])
+        else:
+            c_soc_start = 0
+            c_soc_end = 0
+        soc_min = 100
+        for i in df4:
+            if float(i) < float(soc_min):
+                soc_min = float(i)
+
         try:
-            query = f"""
-            SELECT * FROM {self._raw_data_table}
-            WHERE trip_counter = {trip_id} ORDER BY time asc; """
-            trip_values_database = pd.read_sql_query(query, self._engine)
+            consumption_average = float(raw_data['tripfuel'][last_row]) / 10 / float(
+                raw_data['trip_dist'][last_row])  # Consumption km / h
 
-            number_lines = trip_values_database.shape[0]
-            if number_lines == 0:
-                return
-            elif number_lines <= 20:
-                return
-            df4 = pd.DataFrame(columns=['soc'])
+            ev_proportion = (float(raw_data['trip_ev_dist'][last_row]) * 100) / float(
+                raw_data['trip_dist'][last_row])  # proportion of the usage of the electric engine
 
-            for x in range(0, number_lines):  # remove all 0 from the Dataset
-                if trip_values_database.at[x, 'soc'] != 0:
-                    soc_val = float(trip_values_database.at[x, 'soc'])
-                    df4 = df4.append({'soc': soc_val}, ignore_index=True)
-            last_row = int(number_lines - 1)
-            if df4.shape[0] != 0:
-                c_soc_start = df4.at[0, "soc"]
-                c_soc_end = trip_values_database['soc'][number_lines - 1]
-            else:
-                c_soc_start = 0
-                c_soc_end = 0
-
-            consumption_average = float(trip_values_database['tripfuel'][last_row]) / 10 / float(
-                trip_values_database['trip_dist'][last_row])  # Consumption km / h
-
-            ev_proportion = (float(trip_values_database['trip_ev_dist'][last_row]) * 100) / float(
-                trip_values_database['trip_dist'][last_row])  # proportion of the usage of the electric engine
-
-            driving_stop = float(trip_values_database['trip_nbs'][last_row]) - float(
-                trip_values_database['trip_mov_nbs'][last_row])  # time of standing
+            driving_stop = float(raw_data['trip_nbs'][last_row]) - float(
+                raw_data['trip_mov_nbs'][last_row])  # time of standing
 
             # dataset for Database
-            summary_value = {'trip_number': trip_values_database['trip_counter'][1],
-                             'day': pd.to_datetime(trip_values_database['Date'][0]).date(),
-                             'time_Begins': str(trip_values_database['Time'][0])[-8:-3],
-                             'time_End': str(trip_values_database['Time'][last_row])[-8:-3],
-                             'km_start': trip_values_database['odo'][0],
-                             'km_end': trip_values_database['odo'][last_row],
-                             'trip_length': round(trip_values_database['trip_dist'][last_row], 2),
-                             'trip_length_ev': round(trip_values_database['trip_ev_dist'][last_row], 2),
-                             'driving': round(trip_values_database['trip_nbs'][last_row] / 60, 2),
-                             'driving_ev': round(trip_values_database['trip_ev_nbs'][last_row] / 60, 2),
-                             'driving_move': round(trip_values_database['trip_mov_nbs'][last_row] / 60, 4),
+            summary_value = {'trip_number': raw_data['trip_counter'][1],
+                             'day': pd.to_datetime(raw_data['Date'][0]).date(),
+                             'time_Begins': str(raw_data['Time'][0])[-8:-3],
+                             'time_End': str(raw_data['Time'][last_row])[-8:-3],
+                             'km_start': raw_data['odo'][0],
+                             'km_end': raw_data['odo'][last_row],
+                             'trip_length': round(raw_data['trip_dist'][last_row], 2),
+                             'trip_length_ev': round(raw_data['trip_ev_dist'][last_row], 2),
+                             'driving': round(raw_data['trip_nbs'][last_row] / 60, 2),
+                             'driving_ev': round(raw_data['trip_ev_nbs'][last_row] / 60, 2),
+                             'driving_move': round(raw_data['trip_mov_nbs'][last_row] / 60, 4),
                              'driving_stop': round(int(driving_stop) / 60, 4),
-                             'fuel': round(float(trip_values_database['tripfuel'][last_row]), 0),
-                             'outside_temp': round(float(trip_values_database['ambient_temp'].max()), 2),
-                             'outside_temp_average': round(float(trip_values_database['ambient_temp'].mean()), 2),
-                             'soc_average': round(float(trip_values_database['soc'].mean()), 2),
-                             'soc_minimum': round(float(df4['soc'].min()), 2),
-                             'soc_maximal': round(float(trip_values_database['soc'].max()), 2),
+                             'fuel': round(float(raw_data['tripfuel'][last_row]), 0),
+                             'outside_temp': round(float(raw_data['ambient_temp'].max()), 2),
+                             'outside_temp_average': round(float(raw_data['ambient_temp'].mean()), 2),
+                             'soc_average': round(float(raw_data['soc'].mean()), 2),
+                             'soc_minimum': round(float(soc_min), 2),
+                             'soc_maximal': round(float(raw_data['soc'].max()), 2),
                              'soc_start': round(float(c_soc_start), 2),
                              'soc_end': round(float(c_soc_end), 2),
                              'consumption_average': round(float(consumption_average), 2),
                              'ev_proportion': [int(ev_proportion)],
-                             'speed_average': int(trip_values_database['speed_obd'].mean()),
-                             'speed_max': [trip_values_database['speed_obd'].max()],
+                             'speed_average': int(raw_data['speed_obd'].mean()),
+                             'speed_max': [raw_data['speed_obd'].max()],
                              'soc_change': round(int(c_soc_end) - int(c_soc_start), 2),
-                             'rotation_speed_average': round(trip_values_database['ice_rpm'].mean(), 0),
-                             'rotation_speed_max': [trip_values_database['ice_rpm'].max()],
-                             'engine load_average': round(trip_values_database['ice_load'].mean(), 0),
-                             'engine_load_max': [trip_values_database['ice_load'].max()],
-                             'battery_temp_max': round(trip_values_database['battery_temp'].max(), 2),
-                             'battery_temp_average': round(trip_values_database['battery_temp'].mean(), 2),
-                             'battery_temp_min': round(trip_values_database['battery_temp'].min(), 2),
-                             'engine_cooling_temperature_max': round(trip_values_database['ice_temp'].max(), 2),
-                             'engine_cooling_temperature_average': round(trip_values_database['ice_temp'].mean(), 2),
-                             'engine_cooling_temperature_min': round(trip_values_database['ice_temp'].min(), 2),
-                             'electric_motor_temp_max': round(trip_values_database['mg_temp'].max(), 2),
-                             'electric_motor_temp_average': round(trip_values_database['mg_temp'].mean(), 2),
-                             'electric_motor_temp_min': round(trip_values_database['mg_temp'].min(), 2),
-                             'inverter_motor_temp_max': round(trip_values_database['inverter_temp'].max(), 2),
-                             'inverter_motor_temp_average': round(trip_values_database['inverter_temp'].mean(), 2),
-                             'inverter_motor_temp_min': round(trip_values_database['inverter_temp'].min(), 2),
-                             'indoor_temp_max': round(trip_values_database['inhaling_temp'].max(), 2),
-                             'indoor_temp_average': round(trip_values_database['inhaling_temp'].mean(), 2),
-                             'indoor_temp_min': round(trip_values_database['inhaling_temp'].min(), 2)
+                             'rotation_speed_average': round(raw_data['ice_rpm'].mean(), 0),
+                             'rotation_speed_max': [raw_data['ice_rpm'].max()],
+                             'engine load_average': round(raw_data['ice_load'].mean(), 0),
+                             'engine_load_max': [raw_data['ice_load'].max()],
+                             'battery_temp_max': round(raw_data['battery_temp'].max(), 2),
+                             'battery_temp_average': round(raw_data['battery_temp'].mean(), 2),
+                             'battery_temp_min': round(raw_data['battery_temp'].min(), 2),
+                             'engine_cooling_temperature_max': round(raw_data['ice_temp'].max(), 2),
+                             'engine_cooling_temperature_average': round(raw_data['ice_temp'].mean(), 2),
+                             'engine_cooling_temperature_min': round(raw_data['ice_temp'].min(), 2),
+                             'electric_motor_temp_max': round(raw_data['mg_temp'].max(), 2),
+                             'electric_motor_temp_average': round(raw_data['mg_temp'].mean(), 2),
+                             'electric_motor_temp_min': round(raw_data['mg_temp'].min(), 2),
+                             'inverter_motor_temp_max': round(raw_data['inverter_temp'].max(), 2),
+                             'inverter_motor_temp_average': round(raw_data['inverter_temp'].mean(), 2),
+                             'inverter_motor_temp_min': round(raw_data['inverter_temp'].min(), 2),
+                             'indoor_temp_max': round(raw_data['inhaling_temp'].max(), 2),
+                             'indoor_temp_average': round(raw_data['inhaling_temp'].mean(), 2),
+                             'indoor_temp_min': round(raw_data['inhaling_temp'].min(), 2)
                              }
-
-            overview_frame = pd.DataFrame(data=summary_value)
-            del trip_values_database
-            del summary_value
-
-            self._lock.acquire()
-            overview_frame.to_sql(self._overview_table,
-                                  index=False,
-                                  con=self._engine,
-                                  if_exists='append')
-            self._lock.release()
-            del overview_frame
-        except ZeroDivisionError:
-            return
-        except:
-            pass
+        except Exception as e:
+            print(e)
+            summary_value = {}
+        finally:
+            return pd.DataFrame(data=summary_value)
 
     def start(self, program):
         """run the start with all parameter"""
         number_of_processes = self._threads
         if program == "trips":
-            new_files = False
-            regex = re.compile("Trip_20[1-3][0-9]-[0-2][0-9]-[0-3][0-9]_[0-3][0-9]-[0-9][0-9]-[0-9][0-9].txt")
+            new_files = []
+            new_file = False
+            regex = re.compile("Trip_20[1-3]\d-[0-2]\d-[0-3]\d_[0-3]\d-\d\d-\d\d.txt")
             for file in os.listdir(self._path):
                 if regex.match(file):
-                    new_files = True
-                    break
+                    new_files.append(file)
+                    new_file = True
 
-            if new_files:
-                p1 = threading.Thread(target=self._upload_trips_raw)
+            if new_file:
+                p1 = threading.Thread(target=self._upload_trips_raw, args=(new_files,))
                 p1.start()
                 p1.join(300)
 
         elif program == "calc_summary":
-            self._task_list = self._getMissiongSummaryTrips()
+            self._task_list = self._getMissingSummaryTrips()
             diff = len(self._task_list)
 
             thread_count = 0
@@ -308,8 +325,6 @@ class HaTool:
             else:
                 thread_count = int(number_of_processes)
             threading.Thread(target=self._trip_handler, args=(thread_count,)).start()
-
-
         else:
             print("unknown program")
 
@@ -318,4 +333,3 @@ if __name__ == "__main__":
     ha = HaTool()
     ha.start("trips")
     ha.start("calc_summary")
-

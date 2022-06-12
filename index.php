@@ -76,23 +76,28 @@ if(isset($_GET['_url'])){
         echo "admin";
 
     }elseif(strtolower($uri[1])== "summary"){
-
-        if(strtolower($uri[2]) == "day"){
+        if(strtolower($uri[2]) == "single") {
+            $summary = new \Src\Gateway\SummaryGateway("single");
+            if (strtolower($uri[3]) == "data") {
+                $output->addData($summary->getSummary(), "summary");
+            } else {
+                $output->addData($summary->getColumns(), "columns");
+            }
+        }else if(strtolower($uri[2]) == "day"){
             $summary = new \Src\Gateway\SummaryGateway("day");
             if(strtolower($uri[3]) == "data"){
                 $output->addData($summary->getSummary() , "summary");
             }else{
                 $output->addData($summary->getColumns() , "columns");
             }
-        }elseif (strtolower($uri[2] == "month")){
+        }else if (strtolower($uri[2] == "month")){
             $summary = new \Src\Gateway\SummaryGateway("month");
             if(strtolower($uri[3]) == "data"){
                 $output->addData($summary->getSummary() , "summary");
             }else{
                 $output->addData($summary->getColumns() , "columns");
             }
-        }
-        elseif (strtolower($uri[2] == "trips")){
+        }else if (strtolower($uri[2] == "trips")){
             $summary = new \Src\Gateway\SummaryGateway("trips");
             if(strtolower($uri[3]) == "data"){
                 $output->addData($summary->getSummary() , "summary");

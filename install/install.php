@@ -27,7 +27,7 @@ catch(PDOException $ex){
 }
 $env=array();
 $env[]= "#auto generatted";
-$env[]="DB_HOST=".$_POST['dbip'];
+$env[]= "DB_HOST=".$_POST['dbip'];
 $env[]= "DB_USERNAME=".$_POST['dbuser'];
 $env[]= "DB_PASSWORD=".$_POST['dbpwd'];
 $env[]= "DB_SCHEMA=". $_POST['dbname'];
@@ -37,7 +37,7 @@ $env[]= "#Tabellennamen der DB";
 $env[]= "table_user=user";
 $env[]= "table_raw=fast_log";
 $env[]= "table_overview=overview";
-$env[]= "table_list_trips=loggedtrips";
+$env[]= "created_trips_table=loggedtrips";
 $env[]= "table_api_logger=log";
 
 if(isset($_POST['jwtsecret'])&& strlen($_POST['jwtsecret']) == 64){
@@ -62,15 +62,15 @@ if(isset($_POST['logs'])){
 $env[]= "tokenscheck=true";
 
 $env[]= "PathToTripData=".$_POST['pathtripdata'];
-$env[]= "PathToPy=".$_POST['pathtpython'];
+$env[]= "PathToPy=".$_POST['filenamepy'];
 $env[]= "Pyname=".$_POST['filenamepy'];
 $env[]= "process=".$_POST['process'];
 
 
-if (!file_exists ( "../.env2" )){
+if (!file_exists ( "../.env" )){
     foreach ($env as $item){
         file_put_contents('../.env', $item.PHP_EOL , FILE_APPEND | LOCK_EX);
     }
 }
 
-echo "no Error";
+echo "please remove /api/install directory if everything works fine";

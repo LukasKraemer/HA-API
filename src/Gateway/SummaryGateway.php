@@ -34,21 +34,25 @@ class SummaryGateway
         if($this->mode=="day"){
             if(isset($_GET['timeBegin'])){
                 $this->whereSQL .= "AND date(day) > :start ";
-                $this->whereData['start'] =date("Y-m-d", intval($_GET['timeBegin']));;
+                $this->whereData['start'] =date("Y-m-d", intval($_GET['timeBegin']));
             }
             if(isset($_GET['timeEnd'])){
                 $this->whereSQL .= "AND date(day) < :end ";
-                $this->whereData['end'] = date("Y-m-d", intval($_GET['timeEnd']));;
+                $this->whereData['end'] = date("Y-m-d", intval($_GET['timeEnd']));
             }
             return;
         }
+        if(isset($_GET['tripID'])){
+            $this->whereSQL .= "AND trip_counter = :trip_counter ";
+            $this->whereData['trip_counter'] = $_GET['tripID'];
+        }
         if(isset($_GET['timeBegin'])){
             $this->whereSQL .= "AND date(day) > :start ";
-            $this->whereData['start'] =date("Y-m-d", intval($_GET['timeBegin']));;
+            $this->whereData['start'] =date("Y-m-d", intval($_GET['timeBegin']));
         }
         if(isset($_GET['timeEnd'])){
             $this->whereSQL .= "AND day < :end ";
-            $this->whereData['end'] = date("Y-m-d", intval($_GET['timeEnd']));;
+            $this->whereData['end'] = date("Y-m-d", intval($_GET['timeEnd']));
         }
         if(isset($_GET['MinLength'])){
             $this->whereSQL .= "AND trip_length > :MinLength ";
@@ -87,63 +91,64 @@ class SummaryGateway
     private function setSQL() {
         $this->createWhereStatement();
         if ($this->mode =="day"){
-        $this->sql='select
-        year(day) as year,
-        MONTH(day) as month,
-        day(day) as day,
-        round(sum(trip_length),3) as "Total driving distance" ,
-        round(sum(trip_length_ev), 3) as "Total driving distance eletric" ,
-        round(sum(driving)/60, 3) as "drivingtime in hours",
-        round(sum(driving_ev) /60 ,3) as "drivingtime electic in hours",
-        round(sum(driving_move) /60 ,3) as "drivingtime in movement in hours",
-        round(sum(fuel)/1000,3) as "fuel in L",
-        round( avg(outside_temp_average) ,3) as "outsidetemp average",
-        round(avg(soc_average),3) as "Average battery level",
-        round(sum(fuel)/1000*100 / sum(trip_length) ,3) as "Average consumption in L",
-        round(avg(ev_proportion),3) as "Electric travel time in percent",
-        round(avg(speed_average),3) as "Average speed", 
-        round(max(speed_max),3) as "Max speed", 
-        round(sum(driving_ev)*100/sum(driving_move), 3) as "movement in percent",
-        round(sum(trip_length_ev)* 100/sum(trip_length),3) as "electric movement in percent", 
-        round(max(driving_ev),3) as "Max drivingtime electic",
-        round(min(outside_temp_average),3) as "Min Outside temp",
-        round(avg(outside_temp_average),3) as "average Outside temp",
-        round(max(outside_temp_average),3) as "Max Outside temp"
-        FROM '. $_ENV['table_overview']. $this->whereSQL . ' 
-        group by  year, month, day
-        order by date(day);';
-    }else if ($this->mode =="month"){
-       $this->sql='select
-        year(day) as year,
-        MONTH(day) as month,
-        DAY(day) as day,
-        round(sum(trip_length),3) as "Total driving distance" ,
-        round(sum(trip_length_ev), 3) as "Total driving distance eletric" ,
-        round(sum(driving)/60, 3) as "drivingtime in hours",
-        round(sum(driving_ev) /60 ,3) as "drivingtime electic in hours",
-        round(sum(driving_move) /60 ,3) as "drivingtime in movement in hours",
-        round(sum(fuel)/1000,3) as "fuel in L",
-        round( avg(outside_temp_average) ,3) as "outsidetemp average",
-        round(avg(soc_average),3) as "Average battery level",
-        round(sum(fuel)/1000*100 / sum(trip_length) ,3) as "Average consumption in L",
-        round(avg(ev_proportion),3) as "Electric travel time in percent",
-        round(avg(speed_average),1) as "Average speed", 
-        max(speed_max) as "Max speed", 
-        round(sum(driving_ev)*100/sum(driving_move), 3) as "movement in percent",
-        round(sum(trip_length_ev)* 100/sum(trip_length),3) as "electric movement in percent", 
-        round(max(driving_ev),3) as "Max drivingtime electic",
-        round(min(outside_temp_average),3) as "Min Outside temp",
-        round(avg(outside_temp_average),3) as "average Outside temp",
-        round(max(outside_temp_average),3) as "Max Outside temp"
-        FROM '. $_ENV['table_overview']. $this->whereSQL . ' 
-        group by year, month
-        order by date(day);';
-        }
-        else if ($this->mode =="trips"){
+            $this->sql='select
+            year(day) as year,
+            MONTH(day) as month,
+            day(day) as day,
+            round(sum(trip_length),3) as "Total driving distance" ,
+            round(sum(trip_length_ev), 3) as "Total driving distance eletric" ,
+            round(sum(driving)/60, 3) as "drivingtime in hours",
+            round(sum(driving_ev) /60 ,3) as "drivingtime electic in hours",
+            round(sum(driving_move) /60 ,3) as "drivingtime in movement in hours",
+            round(sum(fuel)/1000,3) as "fuel in L",
+            round( avg(outside_temp_average) ,3) as "outsidetemp average",
+            round(avg(soc_average),3) as "Average battery level",
+            round(sum(fuel)/1000*100 / sum(trip_length) ,3) as "Average consumption in L",
+            round(avg(ev_proportion),3) as "Electric travel time in percent",
+            round(avg(speed_average),3) as "Average speed", 
+            round(max(speed_max),3) as "Max speed", 
+            round(sum(driving_ev)*100/sum(driving_move), 3) as "movement in percent",
+            round(sum(trip_length_ev)* 100/sum(trip_length),3) as "electric movement in percent", 
+            round(max(driving_ev),3) as "Max drivingtime electic",
+            round(min(outside_temp_average),3) as "Min Outside temp",
+            round(avg(outside_temp_average),3) as "average Outside temp",
+            round(max(outside_temp_average),3) as "Max Outside temp"
+            FROM '. $_ENV['table_overview']. $this->whereSQL . ' 
+            group by  year, month, day
+            order by date(day);';
+        }else if ($this->mode =="month"){
+           $this->sql='select
+            year(day) as year,
+            MONTH(day) as month,
+            DAY(day) as day,
+            round(sum(trip_length),3) as "Total driving distance" ,
+            round(sum(trip_length_ev), 3) as "Total driving distance eletric" ,
+            round(sum(driving)/60, 3) as "drivingtime in hours",
+            round(sum(driving_ev) /60 ,3) as "drivingtime electic in hours",
+            round(sum(driving_move) /60 ,3) as "drivingtime in movement in hours",
+            round(sum(fuel)/1000,3) as "fuel in L",
+            round( avg(outside_temp_average) ,3) as "outsidetemp average",
+            round(avg(soc_average),3) as "Average battery level",
+            round(sum(fuel)/1000*100 / sum(trip_length) ,3) as "Average consumption in L",
+            round(avg(ev_proportion),3) as "Electric travel time in percent",
+            round(avg(speed_average),1) as "Average speed", 
+            max(speed_max) as "Max speed", 
+            round(sum(driving_ev)*100/sum(driving_move), 3) as "movement in percent",
+            round(sum(trip_length_ev)* 100/sum(trip_length),3) as "electric movement in percent", 
+            round(max(driving_ev),3) as "Max drivingtime electic",
+            round(min(outside_temp_average),3) as "Min Outside temp",
+            round(avg(outside_temp_average),3) as "average Outside temp",
+            round(max(outside_temp_average),3) as "Max Outside temp"
+            FROM '. $_ENV['table_overview']. $this->whereSQL . ' 
+            group by year, month
+            order by date(day);';
+        }else if ($this->mode =="trips"){
             $this->sql = "SELECT * FROM " . $_ENV['table_overview'] . " " . $this->whereSQL . " order by date(day) asc";
-        } else {
+        }else if ($this->mode == "single") {
+            $this->sql= 'SELECT Time,rps,odo,speed_obd,gps_speed,hv_v,hv_a,soc,ice_temp,ice_rpm,ice_pwr,brk_reg_trq,brk_mcyl_trq,trip_nbs,trip_ev_nbs,trip_mov_nbs,trip_dist,trip_ev_dist,hsi,mg2_rpm,ign,ltft,stft,tripfuel,fuelflowh,dcl,ccl,bsfc,ice_load,inverter_temp,battery_temp,mg_temp,inhaling_temp,ambient_temp,room_temp,mg2_torque,mg1_rpm,mg1_torque,mgr_rpm,mgr_torque,glideindex,accelerator FROM '. $_ENV['table_raw'] . " " . $this->whereSQL . " order by Time asc";
+        }else {
             $this->createWhereStatement();
-            $this->sql = "SELECT * FROM " . $_ENV['table_overview'] . " " . $this->whereSQL . " order by date(day) asc";
+            $this->sql = 'SELECT * FROM ' . $_ENV['table_overview'] . " " . $this->whereSQL . " order by date(day) asc";
         }
 }
 
@@ -158,7 +163,7 @@ class SummaryGateway
 
     public function getColumns(): array
     {
-        $stmt= $this->database->prepare($this->sql);
+        $stmt= $this->database->prepare($this->sql . ' LIMIT 1');
         $stmt->execute($this->whereData);
         return  array_keys($stmt->fetch(PDO::FETCH_ASSOC));
     }
